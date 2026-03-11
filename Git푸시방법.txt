@@ -1,4 +1,5 @@
 ■ GitHub에 올리는 방법 (한 번만 하면 됨)
+   저장소: https://github.com/YURIIEUN/260311
 
 1. Git 설치
    https://git-scm.com/download/win

@@ -1,4 +1,5 @@
 @echo off
+REM 로또 번호 추천 - 변경사항 커밋 후 origin/main 푸시
 chcp 65001 >nul
 cd /d "%~dp0"
 
