@@ -211,6 +211,7 @@ body[data-theme="dark"] .theme-toggle {
   font-size: 0.85rem;
   color: var(--muted);
   min-height: 1.2em;
+  display: none; /* 디버깅용 상태 문구 숨김 */
 }
 
 .supabase-status.error {
