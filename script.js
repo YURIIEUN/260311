@@ -1,14 +1,34 @@
 (function () {
   "use strict";
 
-  // Vercel 배포 시 /api/supabase-config 에서 환경 변수 로드 (SUPABASE_URL, SUPABASE_ANON_KEY)
-  fetch("/api/supabase-config")
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data.SUPABASE_URL) window.SUPABASE_URL = data.SUPABASE_URL;
-      if (data.SUPABASE_ANON_KEY) window.SUPABASE_ANON_KEY = data.SUPABASE_ANON_KEY;
+  var statusEl = document.getElementById("supabaseStatus");
+  function setStatus(msg, isError) {
+    if (!statusEl) return;
+    statusEl.textContent = msg;
+    statusEl.className = "supabase-status" + (isError ? " error" : msg.indexOf("저장됨") !== -1 ? " ok" : "");
+  }
+  setStatus("Supabase 로드 중...");
+
+  // 설정 로드 Promise: 완료된 뒤에만 저장 가능 (버튼 빠르게 눌러도 대기)
+  var configPromise = fetch("/api/supabase-config")
+    .then(function (r) {
+      if (!r.ok) throw new Error("API " + r.status);
+      return r.json();
     })
-    .catch(function () {});
+    .then(function (data) {
+      var url = (data && data.SUPABASE_URL) ? String(data.SUPABASE_URL).trim() : "";
+      var key = (data && data.SUPABASE_ANON_KEY) ? String(data.SUPABASE_ANON_KEY).trim() : "";
+      if (url) window.SUPABASE_URL = url;
+      if (key) window.SUPABASE_ANON_KEY = key;
+      if (url && key) setStatus("Supabase 준비됨");
+      else setStatus("Supabase 설정 없음 (Vercel 환경 변수 확인)", true);
+      return { url: url, key: key };
+    })
+    .catch(function (err) {
+      console.warn("Supabase config load failed:", err);
+      setStatus("설정 로드 실패: " + (err.message || "API 확인"), true);
+      return { url: "", key: "" };
+    });
 
   const MIN = 1;
   const MAX = 45;
@@ -99,21 +119,41 @@
   }
 
   function saveToSupabase(sets) {
-    var url = window.SUPABASE_URL;
-    var key = window.SUPABASE_ANON_KEY;
-    if (!url || !key || url === "YOUR_SUPABASE_URL" || key === "YOUR_SUPABASE_ANON_KEY") {
-      return;
-    }
-    try {
-      var supabase = window.supabase.createClient(url, key);
-      var table = "lotto_results";
-      sets.forEach(function (set) {
-        supabase.from(table).insert({ numbers: set.numbers, bonus: set.bonus }).then(function (r) {
-          if (r.error) console.warn("Supabase insert error:", r.error.message);
+    function doInsert(config) {
+      var url = config.url || window.SUPABASE_URL;
+      var key = config.key || window.SUPABASE_ANON_KEY;
+      if (!url || !key || url === "YOUR_SUPABASE_URL" || key === "YOUR_SUPABASE_ANON_KEY") {
+        setStatus("저장 안 함: Supabase URL/키 없음", true);
+        return;
+      }
+      if (!window.supabase || !window.supabase.createClient) {
+        setStatus("저장 실패: Supabase 스크립트 로드 안 됨", true);
+        return;
+      }
+      setStatus("저장 중...");
+      try {
+        var supabase = window.supabase.createClient(url, key);
+        var table = "lotto_results";
+        var rows = sets.map(function (s) { return { numbers: s.numbers, bonus: s.bonus }; });
+        supabase.from(table).insert(rows).then(function (r) {
+          if (r.error) {
+            setStatus("저장 실패: " + (r.error.message || r.error.code), true);
+            console.warn("Supabase insert error:", r.error);
+          } else {
+            setStatus("저장됨 (" + sets.length + "세트)");
+          }
+        }).catch(function (e) {
+          setStatus("저장 실패: " + (e.message || String(e)), true);
         });
-      });
-    } catch (e) {
-      console.warn("Supabase save error:", e);
+      } catch (e) {
+        setStatus("저장 실패: " + (e.message || String(e)), true);
+        console.warn("Supabase save error:", e);
+      }
+    }
+    if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
+      doInsert({ url: window.SUPABASE_URL, key: window.SUPABASE_ANON_KEY });
+    } else {
+      configPromise.then(doInsert);
     }
   }
 

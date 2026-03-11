@@ -206,6 +206,21 @@ body[data-theme="dark"] .theme-toggle {
   opacity: 0.92;
 }
 
+.supabase-status {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+  min-height: 1.2em;
+}
+
+.supabase-status.error {
+  color: #e53935;
+}
+
+.supabase-status.ok {
+  color: var(--blue);
+}
+
 .results-wrap {
   margin-top: 0.5rem;
 }
