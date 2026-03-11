@@ -86,4 +86,41 @@
   }
 
   generateBtn.addEventListener("click", render);
+
+  // 어두운 버전 토글
+  const themeToggle = document.getElementById("themeToggle");
+  const themeIcon = document.querySelector(".theme-icon");
+  const metaTheme = document.getElementById("metaTheme");
+  const THEME_KEY = "lotto-theme";
+
+  function applyTheme(isDark) {
+    if (isDark) {
+      document.body.classList.add("dark");
+      document.body.setAttribute("data-theme", "dark");
+      if (themeIcon) themeIcon.textContent = "🌙";
+      if (metaTheme) metaTheme.setAttribute("content", "#0d1117");
+      if (themeToggle) themeToggle.setAttribute("aria-label", "밝은 버전으로 전환");
+    } else {
+      document.body.classList.remove("dark");
+      document.body.removeAttribute("data-theme");
+      if (themeIcon) themeIcon.textContent = "☀";
+      if (metaTheme) metaTheme.setAttribute("content", "#FFFFFF");
+      if (themeToggle) themeToggle.setAttribute("aria-label", "어두운 버전으로 전환");
+    }
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem(THEME_KEY);
+    const isDark = saved === "dark";
+    applyTheme(isDark);
+  }
+
+  if (themeToggle) {
+    themeToggle.addEventListener("click", function () {
+      const isDark = !document.body.classList.contains("dark");
+      localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+      applyTheme(isDark);
+    });
+  }
+  initTheme();
 })();

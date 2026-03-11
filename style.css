@@ -8,6 +8,48 @@
   --font: "Inter", "Noto Sans KR", system-ui, -apple-system, sans-serif;
 }
 
+/* 어두운 버전 */
+body.dark,
+body[data-theme="dark"] {
+  --bg: #0d1117;
+  --text: #e6edf3;
+  --muted: #8b949e;
+  --line: rgba(255, 255, 255, 0.08);
+  --blue: #58a6ff;
+}
+body.dark .set-card,
+body[data-theme="dark"] .set-card {
+  background: #161b22;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+body.dark .ball,
+body[data-theme="dark"] .ball {
+  background: #21262d;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: #e6edf3;
+}
+body.dark .ball[data-range="1-9"],
+body[data-theme="dark"] .ball[data-range="1-9"]   { background: #3d2c00; border-color: #9e6b00; color: #f0c14b; }
+body.dark .ball[data-range="10-19"],
+body[data-theme="dark"] .ball[data-range="10-19"] { background: #0d2137; border-color: #1a5bbf; color: #79b8ff; }
+body.dark .ball[data-range="20-29"],
+body[data-theme="dark"] .ball[data-range="20-29"] { background: #0d2b0d; border-color: #2e7d32; color: #7ee787; }
+body.dark .ball[data-range="30-39"],
+body[data-theme="dark"] .ball[data-range="30-39"] { background: #2d1b3d; border-color: #6a1b9a; color: #d2a8ff; }
+body.dark .ball[data-range="40-45"],
+body[data-theme="dark"] .ball[data-range="40-45"] { background: #3d1a1a; border-color: #c62828; color: #ff7b72; }
+body.dark .controls select,
+body[data-theme="dark"] .controls select {
+  background: #21262d;
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+}
+body.dark .results:empty::before,
+body[data-theme="dark"] .results:empty::before {
+  color: var(--muted);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -56,6 +98,27 @@ body {
   letter-spacing: -0.04em;
   color: var(--blue);
   text-transform: lowercase;
+}
+
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.theme-toggle:hover {
+  opacity: 0.85;
+}
+body.dark .theme-toggle,
+body[data-theme="dark"] .theme-toggle {
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .main {
