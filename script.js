@@ -1,6 +1,15 @@
 (function () {
   "use strict";
 
+  // Vercel 배포 시 /api/supabase-config 에서 환경 변수 로드 (SUPABASE_URL, SUPABASE_ANON_KEY)
+  fetch("/api/supabase-config")
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data.SUPABASE_URL) window.SUPABASE_URL = data.SUPABASE_URL;
+      if (data.SUPABASE_ANON_KEY) window.SUPABASE_ANON_KEY = data.SUPABASE_ANON_KEY;
+    })
+    .catch(function () {});
+
   const MIN = 1;
   const MAX = 45;
   const PICK = 6;
@@ -35,8 +44,11 @@
     const count = Math.min(10, Math.max(1, parseInt(countSelect.value, 10) || 1));
     resultsEl.innerHTML = "";
 
+    var sets = [];
     for (let s = 0; s < count; s++) {
-      const { numbers, bonus } = pickOneSet();
+      const set = pickOneSet();
+      sets.push(set);
+      const { numbers, bonus } = set;
       const card = document.createElement("div");
       card.className = "set-card";
       card.setAttribute("role", "group");
@@ -82,6 +94,26 @@
       card.appendChild(bonusWrap);
       card.appendChild(accent);
       resultsEl.appendChild(card);
+    }
+    saveToSupabase(sets);
+  }
+
+  function saveToSupabase(sets) {
+    var url = window.SUPABASE_URL;
+    var key = window.SUPABASE_ANON_KEY;
+    if (!url || !key || url === "YOUR_SUPABASE_URL" || key === "YOUR_SUPABASE_ANON_KEY") {
+      return;
+    }
+    try {
+      var supabase = window.supabase.createClient(url, key);
+      var table = "lotto_results";
+      sets.forEach(function (set) {
+        supabase.from(table).insert({ numbers: set.numbers, bonus: set.bonus }).then(function (r) {
+          if (r.error) console.warn("Supabase insert error:", r.error.message);
+        });
+      });
+    } catch (e) {
+      console.warn("Supabase save error:", e);
     }
   }
 
