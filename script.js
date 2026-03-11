@@ -118,6 +118,20 @@
     saveToSupabase(sets);
   }
 
+  function getSupabaseLib(callback, attempt) {
+    attempt = attempt || 0;
+    var lib = window.supabase || (window.Supabase && { createClient: window.Supabase.createClient });
+    if (lib && typeof lib.createClient === "function") {
+      callback(lib);
+      return;
+    }
+    if (attempt < 50) {
+      setTimeout(function () { getSupabaseLib(callback, attempt + 1); }, 100);
+    } else {
+      callback(null);
+    }
+  }
+
   function saveToSupabase(sets) {
     function doInsert(config) {
       var url = config.url || window.SUPABASE_URL;
@@ -126,29 +140,31 @@
         setStatus("저장 안 함: Supabase URL/키 없음", true);
         return;
       }
-      if (!window.supabase || !window.supabase.createClient) {
-        setStatus("저장 실패: Supabase 스크립트 로드 안 됨", true);
-        return;
-      }
       setStatus("저장 중...");
-      try {
-        var supabase = window.supabase.createClient(url, key);
-        var table = "lotto_results";
-        var rows = sets.map(function (s) { return { numbers: s.numbers, bonus: s.bonus }; });
-        supabase.from(table).insert(rows).then(function (r) {
-          if (r.error) {
-            setStatus("저장 실패: " + (r.error.message || r.error.code), true);
-            console.warn("Supabase insert error:", r.error);
-          } else {
-            setStatus("저장됨 (" + sets.length + "세트)");
-          }
-        }).catch(function (e) {
+      getSupabaseLib(function (lib) {
+        if (!lib) {
+          setStatus("저장 실패: Supabase 스크립트 로드 안 됨 (CDN 확인)", true);
+          return;
+        }
+        try {
+          var supabase = lib.createClient(url, key);
+          var table = "lotto_results";
+          var rows = sets.map(function (s) { return { numbers: s.numbers, bonus: s.bonus }; });
+          supabase.from(table).insert(rows).then(function (r) {
+            if (r.error) {
+              setStatus("저장 실패: " + (r.error.message || r.error.code), true);
+              console.warn("Supabase insert error:", r.error);
+            } else {
+              setStatus("저장됨 (" + sets.length + "세트)");
+            }
+          }).catch(function (e) {
+            setStatus("저장 실패: " + (e.message || String(e)), true);
+          });
+        } catch (e) {
           setStatus("저장 실패: " + (e.message || String(e)), true);
-        });
-      } catch (e) {
-        setStatus("저장 실패: " + (e.message || String(e)), true);
-        console.warn("Supabase save error:", e);
-      }
+          console.warn("Supabase save error:", e);
+        }
+      });
     }
     if (window.SUPABASE_URL && window.SUPABASE_ANON_KEY) {
       doInsert({ url: window.SUPABASE_URL, key: window.SUPABASE_ANON_KEY });
