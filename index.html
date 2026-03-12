@@ -40,9 +40,9 @@
       <div class="controls">
         <label for="count">추천 세트</label>
         <select id="count" aria-label="추천 세트 수">
-          <option value="1">1세트</option>
+          <option value="1" selected>1세트</option>
           <option value="3">3세트</option>
-          <option value="5" selected>5세트</option>
+          <option value="5">5세트</option>
           <option value="10">10세트</option>
         </select>
         <button type="button" class="btn" id="generateBtn">번호 추천받기</button>
@@ -52,6 +52,17 @@
 
     <section class="results-wrap" aria-label="추천 결과">
       <div class="results" id="results" aria-live="polite"></div>
+    </section>
+
+    <section class="history-wrap" id="historyWrap" aria-label="추천 히스토리" style="display: none;">
+      <button type="button" class="history-toggle" id="historyToggle" aria-expanded="false">
+        <span class="history-toggle-text">추천 히스토리</span>
+        <span class="history-toggle-icon">▼</span>
+      </button>
+      <div class="history-content" id="historyContent" style="display: none;">
+        <div class="history-list" id="historyList"></div>
+        <button type="button" class="history-clear" id="historyClear">히스토리 모두 삭제</button>
+      </div>
     </section>
   </main>
 

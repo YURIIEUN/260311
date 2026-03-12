@@ -265,6 +265,17 @@
       resultsEl.appendChild(card);
     }
     saveToSupabase(sets);
+    saveHistory(sets);
+    renderHistory();
+    // 히스토리 섹션 표시 (접혀진 상태로)
+    showHistory();
+  }
+
+  function showHistory() {
+    // 히스토리 섹션만 표시 (접혀진 상태로 유지)
+    if (historyWrap) {
+      historyWrap.style.display = "block";
+    }
   }
 
   function getSupabaseLib(callback, attempt) {
@@ -367,4 +378,126 @@
       console.log("로또 당첨 번호 데이터 로드 완료. 통계 기반 추천 모드 활성화.");
     }
   });
+
+  // 히스토리 관리
+  const HISTORY_KEY = "lotto-history";
+  const historyWrap = document.getElementById("historyWrap");
+  const historyToggle = document.getElementById("historyToggle");
+  const historyContent = document.getElementById("historyContent");
+  const historyList = document.getElementById("historyList");
+  const historyClear = document.getElementById("historyClear");
+
+  function saveHistory(sets) {
+    var history = getHistory();
+    var newEntry = {
+      date: new Date().toISOString(),
+      sets: sets.map(function (s) {
+        return {
+          numbers: s.numbers,
+          bonus: s.bonus
+        };
+      })
+    };
+    history.unshift(newEntry); // 최신 항목을 앞에 추가
+    // 최대 50개까지만 저장
+    if (history.length > 50) {
+      history = history.slice(0, 50);
+    }
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  }
+
+  function getHistory() {
+    try {
+      var stored = localStorage.getItem(HISTORY_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function renderHistory() {
+    var history = getHistory();
+    historyList.innerHTML = "";
+
+    if (history.length === 0) {
+      var emptyMsg = document.createElement("div");
+      emptyMsg.className = "history-empty";
+      emptyMsg.textContent = "아직 추천 히스토리가 없습니다.";
+      historyList.appendChild(emptyMsg);
+      return;
+    }
+
+    history.forEach(function (entry, index) {
+      var historyItem = document.createElement("div");
+      historyItem.className = "history-item";
+
+      var date = new Date(entry.date);
+      var dateStr = date.toLocaleDateString("ko-KR", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit"
+      });
+
+      var header = document.createElement("div");
+      header.className = "history-item-header";
+      header.textContent = dateStr;
+
+      var setsContainer = document.createElement("div");
+      setsContainer.className = "history-sets";
+
+      entry.sets.forEach(function (set, setIndex) {
+        var setCard = document.createElement("div");
+        setCard.className = "history-set";
+
+        var numbersText = set.numbers.join(", ");
+        var numbersSpan = document.createElement("span");
+        numbersSpan.className = "history-numbers";
+        numbersSpan.textContent = numbersText;
+
+        var bonusSpan = document.createElement("span");
+        bonusSpan.className = "history-bonus";
+        bonusSpan.textContent = "보너스 " + set.bonus;
+
+        setCard.appendChild(numbersSpan);
+        setCard.appendChild(bonusSpan);
+        setsContainer.appendChild(setCard);
+      });
+
+      historyItem.appendChild(header);
+      historyItem.appendChild(setsContainer);
+      historyList.appendChild(historyItem);
+    });
+  }
+
+  // 히스토리 토글
+  if (historyToggle && historyContent) {
+    historyToggle.addEventListener("click", function () {
+      var isExpanded = historyToggle.getAttribute("aria-expanded") === "true";
+      var newExpanded = !isExpanded;
+      
+      historyToggle.setAttribute("aria-expanded", newExpanded);
+      if (newExpanded) {
+        historyContent.style.display = "block";
+        historyToggle.querySelector(".history-toggle-icon").textContent = "▲";
+      } else {
+        historyContent.style.display = "none";
+        historyToggle.querySelector(".history-toggle-icon").textContent = "▼";
+      }
+    });
+  }
+
+  // 히스토리 삭제
+  if (historyClear) {
+    historyClear.addEventListener("click", function () {
+      if (confirm("모든 히스토리를 삭제하시겠습니까?")) {
+        localStorage.removeItem(HISTORY_KEY);
+        renderHistory();
+      }
+    });
+  }
+
+  // 페이지 로드 시 히스토리 표시
+  renderHistory();
 })();
