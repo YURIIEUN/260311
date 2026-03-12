@@ -49,6 +49,10 @@ body.dark .results:empty::before,
 body[data-theme="dark"] .results:empty::before {
   color: var(--muted);
 }
+body.dark .set-title,
+body[data-theme="dark"] .set-title {
+  color: #7DD3FC;
+}
 
 * {
   box-sizing: border-box;
@@ -276,7 +280,7 @@ body[data-theme="dark"] .theme-toggle {
 .set-title {
   font-size: 0.9rem;
   font-weight: 700;
-  color: var(--muted);
+  color: #87CEEB;
   margin-bottom: 0.5rem;
   text-align: center;
 }

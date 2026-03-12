@@ -32,11 +32,107 @@
 
   const MIN = 1;
   const MAX = 45;
-  const PICK = 6;
+  const PICK = 5;
 
   const countSelect = document.getElementById("count");
   const generateBtn = document.getElementById("generateBtn");
   const resultsEl = document.getElementById("results");
+
+  // 로또 당첨 번호 데이터 및 통계
+  var lottoData = null;
+  var numberFrequency = {};
+  var bonusFrequency = {};
+
+  // 로또 데이터 로드 및 통계 계산
+  function loadLottoData() {
+    return fetch("lotto-data.json")
+      .then(function (response) {
+        if (!response.ok) throw new Error("데이터 로드 실패");
+        return response.json();
+      })
+      .then(function (data) {
+        lottoData = data;
+        calculateStatistics();
+        console.log("통계 분석 완료. 총 " + (data.winningNumbers ? data.winningNumbers.length : 0) + "회차 데이터 분석됨.");
+        return data;
+      })
+      .catch(function (err) {
+        console.warn("로또 데이터 로드 실패, 기본 랜덤 모드로 전환:", err);
+        console.warn("lotto-data.json 파일이 없거나 접근할 수 없습니다. 실제 당첨 번호 데이터를 추가해주세요.");
+        return null;
+      });
+  }
+
+  // 통계 계산: 번호별 출현 빈도
+  function calculateStatistics() {
+    numberFrequency = {};
+    bonusFrequency = {};
+    
+    // 1~45 번호 초기화
+    for (let i = MIN; i <= MAX; i++) {
+      numberFrequency[i] = 0;
+      bonusFrequency[i] = 0;
+    }
+
+    // 당첨 번호 데이터 분석
+    if (lottoData && lottoData.winningNumbers) {
+      lottoData.winningNumbers.forEach(function (round) {
+        // 일반 번호 빈도 계산
+        if (round.numbers) {
+          round.numbers.forEach(function (num) {
+            if (num >= MIN && num <= MAX) {
+              numberFrequency[num] = (numberFrequency[num] || 0) + 1;
+            }
+          });
+        }
+        // 보너스 번호 빈도 계산
+        if (round.bonus && round.bonus >= MIN && round.bonus <= MAX) {
+          bonusFrequency[round.bonus] = (bonusFrequency[round.bonus] || 0) + 1;
+        }
+      });
+    }
+  }
+
+  // 가중치 기반 번호 선택
+  function weightedRandomPick(weights, count, exclude) {
+    exclude = exclude || [];
+    var pool = [];
+    var totalWeight = 0;
+
+    // 가중치 계산 및 풀 생성
+    for (let i = MIN; i <= MAX; i++) {
+      if (exclude.indexOf(i) === -1) {
+        var weight = weights[i] || 1;
+        pool.push({ num: i, weight: weight });
+        totalWeight += weight;
+      }
+    }
+
+    var picked = [];
+    for (let c = 0; c < count; c++) {
+      var random = Math.random() * totalWeight;
+      var currentWeight = 0;
+      var selected = null;
+      var selectedIndex = -1;
+
+      for (let i = 0; i < pool.length; i++) {
+        currentWeight += pool[i].weight;
+        if (random <= currentWeight) {
+          selected = pool[i].num;
+          selectedIndex = i;
+          break;
+        }
+      }
+
+      if (selected !== null) {
+        picked.push(selected);
+        totalWeight -= pool[selectedIndex].weight;
+        pool.splice(selectedIndex, 1);
+      }
+    }
+
+    return picked;
+  }
 
   function getRange(n) {
     if (n <= 9) return "1-9";
@@ -46,17 +142,82 @@
     return "40-45";
   }
 
+  // 통계 기반 번호 추천
   function pickOneSet() {
-    const pool = [];
-    for (let i = MIN; i <= MAX; i++) pool.push(i);
-    const picked = [];
-    for (let i = 0; i < PICK; i++) {
-      const idx = Math.floor(Math.random() * pool.length);
-      picked.push(pool.splice(idx, 1)[0]);
+    // 데이터가 없으면 기본 랜덤 모드
+    if (!lottoData || Object.keys(numberFrequency).length === 0) {
+      const pool = [];
+      for (let i = MIN; i <= MAX; i++) pool.push(i);
+      const picked = [];
+      for (let i = 0; i < PICK; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        picked.push(pool.splice(idx, 1)[0]);
+      }
+      picked.sort(function (a, b) { return a - b; });
+      const bonusIdx = Math.floor(Math.random() * pool.length);
+      const bonus = pool[bonusIdx];
+      return { numbers: picked, bonus: bonus };
     }
+
+    // 통계 기반 추천
+    // 최소 빈도값 계산 (0이 아닌 최소값)
+    var minFreq = Math.max(1, Math.min.apply(null, Object.values(numberFrequency).filter(function (v) { return v > 0; })));
+    var maxFreq = Math.max.apply(null, Object.values(numberFrequency));
+    
+    // 가중치 계산: 빈도가 높을수록 높은 가중치 (최소값 기준으로 정규화)
+    var weights = {};
+    for (let i = MIN; i <= MAX; i++) {
+      var freq = numberFrequency[i] || minFreq;
+      // 빈도에 비례하되, 최소값 이상의 가중치 보장
+      weights[i] = freq + (maxFreq - minFreq) * 0.3; // 빈도 차이를 완화
+    }
+
+    // 번호 선택 (가중치 기반)
+    var picked = weightedRandomPick(weights, PICK, []);
     picked.sort(function (a, b) { return a - b; });
-    const bonusIdx = Math.floor(Math.random() * pool.length);
-    const bonus = pool[bonusIdx];
+
+    // 보너스 번호 선택 (보너스 빈도 기반)
+    var bonusMinFreq = Math.max(1, Math.min.apply(null, Object.values(bonusFrequency).filter(function (v) { return v > 0; })));
+    var bonusMaxFreq = Math.max.apply(null, Object.values(bonusFrequency));
+    var bonusWeights = {};
+    for (let i = MIN; i <= MAX; i++) {
+      if (picked.indexOf(i) === -1) {
+        var bonusFreq = bonusFrequency[i] || bonusMinFreq;
+        bonusWeights[i] = bonusFreq + (bonusMaxFreq - bonusMinFreq) * 0.3;
+      }
+    }
+    
+    var bonusPool = [];
+    var bonusTotalWeight = 0;
+    for (let i = MIN; i <= MAX; i++) {
+      if (picked.indexOf(i) === -1 && bonusWeights[i]) {
+        bonusPool.push({ num: i, weight: bonusWeights[i] });
+        bonusTotalWeight += bonusWeights[i];
+      }
+    }
+    
+    var bonus = null;
+    if (bonusPool.length > 0) {
+      var bonusRandom = Math.random() * bonusTotalWeight;
+      var bonusCurrentWeight = 0;
+      for (let i = 0; i < bonusPool.length; i++) {
+        bonusCurrentWeight += bonusPool[i].weight;
+        if (bonusRandom <= bonusCurrentWeight) {
+          bonus = bonusPool[i].num;
+          break;
+        }
+      }
+    }
+    
+    // 보너스가 선택되지 않았으면 랜덤 선택
+    if (bonus === null) {
+      var remaining = [];
+      for (let i = MIN; i <= MAX; i++) {
+        if (picked.indexOf(i) === -1) remaining.push(i);
+      }
+      bonus = remaining[Math.floor(Math.random() * remaining.length)];
+    }
+
     return { numbers: picked, bonus: bonus };
   }
 
@@ -74,10 +235,6 @@
       card.setAttribute("role", "group");
       card.setAttribute("aria-label", "추천 " + (s + 1) + "세트, 보너스 " + bonus);
 
-      const check = document.createElement("div");
-      check.className = "card-check";
-      check.setAttribute("aria-hidden", "true");
-
       const title = document.createElement("div");
       title.className = "set-title";
       title.textContent = (s + 1) + "번째 추천";
@@ -92,27 +249,19 @@
         balls.appendChild(ball);
       });
 
-      const bonusWrap = document.createElement("div");
-      bonusWrap.className = "bonus-wrap";
       const bonusLabel = document.createElement("span");
-      bonusLabel.className = "bonus-label";
+      bonusLabel.className = "bonus-label-inline";
       bonusLabel.textContent = "보너스";
+      balls.appendChild(bonusLabel);
+
       const bonusBall = document.createElement("span");
       bonusBall.className = "ball ball-bonus";
       bonusBall.setAttribute("data-range", getRange(bonus));
       bonusBall.textContent = bonus;
-      bonusWrap.appendChild(bonusLabel);
-      bonusWrap.appendChild(bonusBall);
+      balls.appendChild(bonusBall);
 
-      const accent = document.createElement("div");
-      accent.className = "card-accent";
-      accent.textContent = "보너스는 따로 뽑았어요!";
-
-      card.appendChild(check);
       card.appendChild(title);
       card.appendChild(balls);
-      card.appendChild(bonusWrap);
-      card.appendChild(accent);
       resultsEl.appendChild(card);
     }
     saveToSupabase(sets);
@@ -211,4 +360,11 @@
     });
   }
   initTheme();
+
+  // 로또 데이터 로드 (페이지 로드 시)
+  loadLottoData().then(function () {
+    if (lottoData) {
+      console.log("로또 당첨 번호 데이터 로드 완료. 통계 기반 추천 모드 활성화.");
+    }
+  });
 })();
